@@ -1,0 +1,52 @@
+REPOSITÓRIO: opencode-cowork-proxy
+TIPO: Fork Público (espelho do upstream, branch main)
+LINGUAGEM: TypeScript (Cloudflare Workers)
+URL (seu fork):    https://github.com/odilsonriquelme/opencode-cowork-proxy
+UPSTREAM (fork de): https://github.com/cucoleadan/opencode-cowork-proxy
+
+DESCRIÇÃO
+---------
+Cloudflare Worker (proxy minimalista) que permite o CLAUDE usar os modelos do OpenCode Go
+e alguns modelos do OpenCode Zen (vários GRATUITOS). O Claude fala o formato da API
+Anthropic; o OpenCode Go fala formato OpenAI-compatible. Este Worker fica no meio e
+TRADUZ entre os dois formatos, no edge da Cloudflare (sem servidor próprio).
+
+Ideia central: usar o Claude Code "de graça" (ou barato) apontando-o para modelos do
+OpenCode via este proxy.
+
+RECURSOS NOTÁVEIS (do README)
+-----------------------------
+- Modelos GRATUITOS via OpenCode Zen (acessados pelo prefixo /zen): big-pickle,
+  deepseek-v4-flash-free, minimax-m2.5-free, ring-2.6-1t-free, nemotron-3-super-free, etc.
+- Suporte a IMAGEM/VISÃO: quando você anexa uma imagem no Claude Code, o proxy detecta os
+  blocos de imagem e roteia automaticamente para o Qwen3.5 Plus (vision-capable), traduzindo
+  para o formato de imagem da OpenAI. Transparente, sem configuração.
+- Override do nome do modelo embutido no path da URL (compat. com Claude Desktop).
+- Botão "Deploy to Cloudflare Workers" para deploy em 1 clique.
+
+ARQUITETURA (src/)
+------------------
+index.ts   → ponto de entrada do Worker. Recebe a requisição, decide a direção da tradução
+             e roteia (inclui detecção de imagem -> Qwen3.5 Plus).
+auth.ts    → autenticação (esquema x-api-key).
+cache.ts   → cache de respostas.
+translate/ → tradutores nos DOIS sentidos, em 3 camadas:
+   request/  anthropic-to-openai.ts | openai-to-anthropic.ts  (corpo da requisição)
+   response/ anthropic-to-openai.ts | openai-to-anthropic.ts  (resposta completa)
+   stream/   anthropic-to-openai.ts | openai-to-anthropic.ts  (streaming SSE em tempo real)
+
+test/      → testes Vitest para cada módulo (auth, cache, index, request, response, stream)
+wrangler.toml → config do Cloudflare Worker (name, main=src/index.ts, compatibility_date)
+vitest.config.ts / tsconfig.json / package.json → projeto TS
+.github/workflows/release.yml → CI de release
+
+COMO USAR (resumo do README)
+----------------------------
+1. Deploy do Worker na Cloudflare. 2. Copiar a URL do Worker.
+3. No Claude: "Configure third-party Inference" -> gateway. 4. base URL = URL_DO_WORKER/zen.
+5. auth scheme = x-api-key. (Modelo inicial sugerido: minimax-m2.5-free.)
+
+OBSERVAÇÃO (fork)
+-----------------
+Fork espelho do upstream cucoleadan/opencode-cowork-proxy. README/código são de terceiros
+— não editar. Push deste repo vai só para o SEU fork.
